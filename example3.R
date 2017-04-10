@@ -7,6 +7,8 @@ example3 <- function(n = 10, alpha = pi/4, plot = TRUE, err = 0.1) {
   X <- matrix(x, ncol = 2)
   colnames(X) <- paste0("X", 1:2)
   
+  alpha <- pi/2 - alpha
+  
   beta1 <- c(0, 1, 0)
   beta2 <- c(0, tan(alpha), -1)
   
@@ -38,3 +40,19 @@ example3 <- function(n = 10, alpha = pi/4, plot = TRUE, err = 0.1) {
 }
 
 example3(n = 20)
+
+angle <- seq(0, pi, len = 100)
+uncon_corr <- lapply(angle, function(a) {
+  temp <- example3(n = 20000, alpha = a, plot = FALSE)$data[, c(3,4)]
+  cor(temp$Y1, temp$Y2)
+})
+
+library(latex2exp)
+data.frame(angle, correlation = unlist(uncon_corr)) %>% 
+  ggplot(aes(angle, correlation)) +
+  geom_line() + geom_smooth() +
+  scale_x_continuous(breaks = c(0, pi/4, pi/2, 3*pi/4, pi), 
+                     labels = TeX(c("0", "$\\frac{\\pi}{4}$", "$\\frac{\\pi}{2}$", "$\\frac{3\\pi}{4}$", "$\\pi$")),
+                     name = TeX("$\\alpha$"))
+
+
