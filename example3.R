@@ -1,7 +1,8 @@
 ### Example 3 from 'On label dependence and loss minimization in multi-label classificatino' ###
 library(tidyverse)
+library(MASS)
 
-example3 <- function(n = 10, alpha = pi/4, plot = TRUE, err = 0.1) {
+example3 <- function(n = 10, alpha = pi/4, plot = TRUE, err = 0.1, err.dep = 0) {
 
   x <- runif(n = n*2, min = -1, max = 1)
   X <- matrix(x, ncol = 2)
@@ -13,9 +14,10 @@ example3 <- function(n = 10, alpha = pi/4, plot = TRUE, err = 0.1) {
   beta2 <- c(0, tan(alpha), -1)
   
   y <- cbind(1, X) %*% cbind(beta1, beta2)
-  err1_sample <- sample(c(-1, 1), prob = c(err, 1-err), size = n, replace = TRUE)
-  err2_sample <- sample(c(-1, 1), prob = c(err, 1-err), size = n, replace = TRUE)
-  y <- y * cbind(err1_sample, err2_sample)
+  err_sample <- ifelse(mvrnorm(n = n, mu = c(0, 0), 
+                               Sigma = matrix(c(1, err.dep, err.dep, 1), ncol = 2)) < qnorm(err), -1, 1)
+  
+  y <- y * err_sample
   Y <- ifelse(y < 0, 0, 1)
   colnames(Y) <- paste0("Y", 1:2)
   
@@ -41,6 +43,9 @@ example3 <- function(n = 10, alpha = pi/4, plot = TRUE, err = 0.1) {
 
 example3(n = 20)
 
+library(latex2exp)
+library(stringr)
+
 angle <- seq(0, pi, len = 100)
 uncon_corr <- lapply(seq(0, 0.5, by = 0.1), function(e) {
   sapply(angle, function(a) {
@@ -52,8 +57,7 @@ uncon_corr <- lapply(seq(0, 0.5, by = 0.1), function(e) {
 cor_mat <- do.call("cbind", uncon_corr)
 colnames(cor_mat) <- paste(seq(0, 0.5, by = 0.1))
 
-library(latex2exp)
-library(stringr)
+
 data.frame(angle, cor_mat) %>%
   gather(error, correlation, -angle) %>%
   mutate(error = str_replace_all(error, pattern = "X", "")) %>% 
@@ -66,4 +70,26 @@ data.frame(angle, cor_mat) %>%
                      labels = TeX(c("0", "$\\frac{\\pi}{4}$", "$\\frac{\\pi}{2}$", "$\\frac{3\\pi}{4}$", "$\\pi$")),
                      name = TeX("$\\alpha$"))
 
+uncon_corr <- lapply(seq(0, 1, by = 0.2), function(dep) {
+  sapply(angle, function(a) {
+    temp <- example3(n = 2000, alpha = a, plot = FALSE, err = 0.25, err.dep = dep)$data[, c(3,4)]
+    cor(temp$Y1, temp$Y2)
+  })
+})
+
+cor_mat <- do.call("cbind", uncon_corr)
+colnames(cor_mat) <- paste(seq(0, 1, by = 0.2))
+
+
+data.frame(angle, cor_mat) %>%
+  gather(error.dep, correlation, -angle) %>%
+  mutate(error.dep = str_replace_all(error.dep, pattern = "X", "")) %>% 
+  ggplot(aes(angle, correlation)) +
+  geom_line(aes(color = error.dep)) + 
+  theme_minimal() +
+  scale_color_brewer()+
+  #geom_smooth() +
+  scale_x_continuous(breaks = c(0, pi/4, pi/2, 3*pi/4, pi), 
+                     labels = TeX(c("0", "$\\frac{\\pi}{4}$", "$\\frac{\\pi}{2}$", "$\\frac{3\\pi}{4}$", "$\\pi$")),
+                     name = TeX("$\\alpha$"))
 
