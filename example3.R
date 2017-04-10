@@ -42,15 +42,26 @@ example3 <- function(n = 10, alpha = pi/4, plot = TRUE, err = 0.1) {
 example3(n = 20)
 
 angle <- seq(0, pi, len = 100)
-uncon_corr <- lapply(angle, function(a) {
-  temp <- example3(n = 20000, alpha = a, plot = FALSE)$data[, c(3,4)]
-  cor(temp$Y1, temp$Y2)
+uncon_corr <- lapply(seq(0, 0.5, by = 0.1), function(e) {
+  sapply(angle, function(a) {
+    temp <- example3(n = 2000, alpha = a, plot = FALSE, err = e)$data[, c(3,4)]
+    cor(temp$Y1, temp$Y2)
+  })
 })
 
+cor_mat <- do.call("cbind", uncon_corr)
+colnames(cor_mat) <- paste(seq(0, 0.5, by = 0.1))
+
 library(latex2exp)
-data.frame(angle, correlation = unlist(uncon_corr)) %>% 
+library(stringr)
+data.frame(angle, cor_mat) %>%
+  gather(error, correlation, -angle) %>%
+  mutate(error = str_replace_all(error, pattern = "X", "")) %>% 
   ggplot(aes(angle, correlation)) +
-  geom_line() + geom_smooth() +
+  geom_line(aes(color = error)) + 
+  theme_minimal() +
+  scale_color_brewer()+
+  #geom_smooth() +
   scale_x_continuous(breaks = c(0, pi/4, pi/2, 3*pi/4, pi), 
                      labels = TeX(c("0", "$\\frac{\\pi}{4}$", "$\\frac{\\pi}{2}$", "$\\frac{3\\pi}{4}$", "$\\pi$")),
                      name = TeX("$\\alpha$"))
